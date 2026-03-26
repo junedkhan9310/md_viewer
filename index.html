@@ -1,1083 +1,784 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Markdown Viewer</title>
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
-
-  <!-- marked.js -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-  <!-- highlight.js -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-dark" disabled />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-
-  <!-- html2pdf.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
-  <style>
-    /* ═══════════════════════════════════════
-       DESIGN TOKENS — One Piece palette
-    ═══════════════════════════════════════ */
-    :root {
-      /* Brand */
-      --red:        #e63946;
-      --gold:       #f4a261;
-      --ocean:      #1d3557;
-      --ocean-mid:  #457b9d;
-      --ocean-pale: #a8dadc;
-
-      /* Light theme */
-      --bg:         #f8f5f0;
-      --surface:    #ffffff;
-      --surface-2:  #f1ede6;
-      --border:     #e2d9cc;
-      --text:       #1a1208;
-      --text-2:     #6b5f50;
-      --shadow:     rgba(29,53,87,0.10);
-      --shadow-lg:  rgba(29,53,87,0.18);
-      --accent:     var(--red);
-      --accent-2:   var(--gold);
-      --header-bg:  var(--ocean);
-      --header-text:#ffffff;
-      --scrollbar:  #ccc;
-      --editor-bg:  #fdfaf6;
-      --line-num:   #bdb5a8;
-      --resize-bg:  #e2d9cc;
-    }
-
-    [data-theme="dark"] {
-      --bg:         #0d1b2a;
-      --surface:    #132236;
-      --surface-2:  #1a2e47;
-      --border:     #243d56;
-      --text:       #eae6df;
-      --text-2:     #9badc0;
-      --shadow:     rgba(0,0,0,0.30);
-      --shadow-lg:  rgba(0,0,0,0.50);
-      --header-bg:  #09131e;
-      --header-text:#eae6df;
-      --scrollbar:  #2a4060;
-      --editor-bg:  #0f1e30;
-      --line-num:   #3a5470;
-      --resize-bg:  #1a2e47;
-    }
-
-    /* ═══════════════════════════════════════
-       RESET & BASE
-    ═══════════════════════════════════════ */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html { font-size: 16px; }
-
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transition: background 0.3s, color 0.3s;
-    }
-
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
-
-    /* ═══════════════════════════════════════
-       HEADER
-    ═══════════════════════════════════════ */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--header-bg);
-      color: var(--header-text);
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      box-shadow: 0 2px 12px var(--shadow-lg);
-      flex-shrink: 0;
-      gap: 12px;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
-
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      background: var(--red);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-size: 16px;
-      box-shadow: 0 0 0 2px var(--gold);
-    }
-
-    .app-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-      letter-spacing: 0.01em;
-      white-space: nowrap;
-      color: #fff;
-    }
-
-    .app-title span {
-      color: var(--gold);
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 14px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.82rem;
-      font-weight: 500;
-      transition: all 0.18s ease;
-      white-space: nowrap;
-    }
-
-    .btn-ghost {
-      background: rgba(255,255,255,0.08);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-    .btn-ghost:hover {
-      background: rgba(255,255,255,0.15);
-      border-color: rgba(255,255,255,0.3);
-    }
-
-    .btn-gold {
-      background: var(--gold);
-      color: #1a1208;
-      border: 1px solid transparent;
-    }
-    .btn-gold:hover {
-      background: #e8924e;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(244,162,97,0.4);
-    }
-
-    .btn-red {
-      background: var(--red);
-      color: #fff;
-      border: 1px solid transparent;
-    }
-    .btn-red:hover {
-      background: #c62e3b;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(230,57,70,0.4);
-    }
-
-    .btn-sm {
-      padding: 5px 10px;
-      font-size: 0.78rem;
-    }
-
-    .btn svg { flex-shrink: 0; }
-
-    /* Dark mode toggle — icon swap */
-    #darkToggle .icon-moon  { display: inline; }
-    #darkToggle .icon-sun   { display: none; }
-    [data-theme="dark"] #darkToggle .icon-moon { display: none; }
-    [data-theme="dark"] #darkToggle .icon-sun  { display: inline; }
-
-    /* ═══════════════════════════════════════
-       TOOLBAR (below header)
-    ═══════════════════════════════════════ */
-    .toolbar {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 6px 16px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      flex-shrink: 0;
-      flex-wrap: wrap;
-    }
-
-    .toolbar-sep {
-      width: 1px;
-      height: 20px;
-      background: var(--border);
-      margin: 0 4px;
-    }
-
-    .tbtn {
-      background: none;
-      border: 1px solid transparent;
-      border-radius: 6px;
-      padding: 4px 8px;
-      cursor: pointer;
-      font-size: 0.78rem;
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 500;
-      color: var(--text-2);
-      transition: all 0.15s;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .tbtn:hover {
-      background: var(--surface-2);
-      border-color: var(--border);
-      color: var(--text);
-    }
-    .tbtn-bold  { font-weight: 700; }
-    .tbtn-italic { font-style: italic; }
-
-    .toolbar-right {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .char-count {
-      font-size: 0.73rem;
-      color: var(--text-2);
-      font-family: 'DM Mono', monospace;
-    }
-
-    /* ═══════════════════════════════════════
-       MAIN LAYOUT
-    ═══════════════════════════════════════ */
-    main {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    .pane {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .pane-header {
-      padding: 8px 16px;
-      background: var(--surface-2);
-      border-bottom: 1px solid var(--border);
-      font-size: 0.73rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-2);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-
-    .pane-header .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--accent);
-      flex-shrink: 0;
-    }
-
-    /* Resize handle */
-    .resize-handle {
-      width: 5px;
-      background: var(--resize-bg);
-      cursor: col-resize;
-      flex-shrink: 0;
-      position: relative;
-      transition: background 0.2s;
-    }
-    .resize-handle::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 3px;
-      height: 32px;
-      border-radius: 2px;
-      background: var(--ocean-mid);
-      opacity: 0.4;
-    }
-    .resize-handle:hover, .resize-handle.dragging {
-      background: var(--ocean-pale);
-    }
-
-    /* ═══════════════════════════════════════
-       EDITOR PANE
-    ═══════════════════════════════════════ */
-    .editor-wrap {
-      flex: 1;
-      overflow: hidden;
-      position: relative;
-    }
-
-    #editor {
-      width: 100%;
-      height: 100%;
-      resize: none;
-      border: none;
-      outline: none;
-      background: var(--editor-bg);
-      color: var(--text);
-      font-family: 'DM Mono', monospace;
-      font-size: 0.875rem;
-      line-height: 1.7;
-      padding: 20px 20px 20px 20px;
-      tab-size: 2;
-      transition: background 0.3s, color 0.3s;
-      overflow: auto;
-    }
-
-    #editor::placeholder { color: var(--line-num); }
-
-    /* ═══════════════════════════════════════
-       PREVIEW PANE
-    ═══════════════════════════════════════ */
-    .preview-wrap {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px 28px;
-      background: var(--surface);
-      transition: background 0.3s;
-    }
-
-    /* ─── Rendered Markdown styles ─── */
-    #preview {
-      max-width: 800px;
-      margin: 0 auto;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.95rem;
-      line-height: 1.75;
-      color: var(--text);
-    }
-
-    #preview h1, #preview h2, #preview h3,
-    #preview h4, #preview h5, #preview h6 {
-      font-family: 'Playfair Display', serif;
-      margin-top: 1.6em;
-      margin-bottom: 0.5em;
-      line-height: 1.25;
-      color: var(--text);
-    }
-
-    #preview h1 {
-      font-size: 2rem;
-      border-bottom: 3px solid var(--red);
-      padding-bottom: 0.3em;
-    }
-    #preview h2 {
-      font-size: 1.55rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 0.2em;
-    }
-    #preview h3 { font-size: 1.25rem; color: var(--ocean-mid); }
-    #preview h4 { font-size: 1.05rem; }
-
-    #preview p { margin: 0.75em 0; }
-
-    #preview a { color: var(--ocean-mid); text-underline-offset: 3px; }
-    [data-theme="dark"] #preview a { color: var(--ocean-pale); }
-
-    #preview strong { font-weight: 700; color: var(--text); }
-    #preview em { font-style: italic; color: var(--text-2); }
-
-    #preview ul, #preview ol {
-      padding-left: 1.5em;
-      margin: 0.6em 0;
-    }
-    #preview li { margin: 0.3em 0; }
-    #preview li::marker { color: var(--red); }
-
-    #preview blockquote {
-      border-left: 4px solid var(--gold);
-      margin: 1em 0;
-      padding: 0.5em 1em;
-      background: var(--surface-2);
-      border-radius: 0 8px 8px 0;
-      color: var(--text-2);
-      font-style: italic;
-    }
-
-    #preview hr {
-      border: none;
-      border-top: 2px solid var(--border);
-      margin: 1.5em 0;
-    }
-
-    /* Code */
-    #preview code {
-      font-family: 'DM Mono', monospace;
-      font-size: 0.82em;
-      background: var(--surface-2);
-      padding: 0.15em 0.4em;
-      border-radius: 4px;
-      color: var(--red);
-    }
-
-    #preview pre {
-      margin: 1em 0;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      box-shadow: 0 2px 8px var(--shadow);
-    }
-
-    #preview pre code {
-      background: none;
-      color: inherit;
-      padding: 0;
-      font-size: 0.845rem;
-      display: block;
-    }
-
-    .hljs { padding: 16px 20px !important; }
-
-    /* Pre with label */
-    .code-block-wrap {
-      position: relative;
-    }
-
-    .code-lang-label {
-      position: absolute;
-      top: 0; right: 0;
-      background: var(--ocean);
-      color: #fff;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.68rem;
-      padding: 2px 8px;
-      border-radius: 0 9px 0 6px;
-      letter-spacing: 0.05em;
-      opacity: 0.8;
-      pointer-events: none;
-    }
-
-    /* Tables */
-    #preview table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1em 0;
-      font-size: 0.9rem;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px var(--shadow);
-    }
-
-    #preview thead tr {
-      background: var(--ocean);
-      color: #fff;
-    }
-
-    #preview th, #preview td {
-      padding: 10px 14px;
-      text-align: left;
-    }
-
-    #preview tbody tr:nth-child(odd)  { background: var(--surface); }
-    #preview tbody tr:nth-child(even) { background: var(--surface-2); }
-    #preview tbody tr:hover           { background: rgba(69,123,157,0.1); }
-
-    /* Images */
-    #preview img {
-      max-width: 100%;
-      border-radius: 8px;
-      box-shadow: 0 2px 12px var(--shadow);
-      margin: 0.5em 0;
-    }
-
-    /* Task lists */
-    #preview input[type="checkbox"] {
-      accent-color: var(--red);
-      margin-right: 6px;
-    }
-
-    /* ═══════════════════════════════════════
-       STATUS BAR
-    ═══════════════════════════════════════ */
-    .status-bar {
-      height: 26px;
-      background: var(--ocean);
-      color: rgba(255,255,255,0.65);
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      gap: 16px;
-      font-size: 0.72rem;
-      font-family: 'DM Mono', monospace;
-      flex-shrink: 0;
-      letter-spacing: 0.02em;
-    }
-    .status-bar span { white-space: nowrap; }
-    .status-sep { color: rgba(255,255,255,0.25); }
-
-    /* Saved indicator */
-    .saved-pill {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      color: rgba(168,218,220,0.8);
-      transition: opacity 0.4s;
-    }
-    .saved-pill.hidden { opacity: 0; }
-    .saved-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--ocean-pale);
-    }
-
-    /* ═══════════════════════════════════════
-       TOAST
-    ═══════════════════════════════════════ */
-    #toast {
-      position: fixed;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: var(--ocean);
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 10px;
-      font-size: 0.85rem;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.3s, transform 0.3s;
-      z-index: 999;
-      border: 1px solid rgba(255,255,255,0.15);
-      box-shadow: 0 4px 20px var(--shadow-lg);
-      white-space: nowrap;
-    }
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    /* ═══════════════════════════════════════
-       EXPORT OVERLAY
-    ═══════════════════════════════════════ */
-    #exportOverlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.55);
-      z-index: 500;
-      align-items: center;
-      justify-content: center;
-    }
-    #exportOverlay.active { display: flex; }
-    .export-box {
-      background: var(--surface);
-      border-radius: 14px;
-      padding: 28px 32px;
-      text-align: center;
-      box-shadow: 0 16px 40px var(--shadow-lg);
-      border: 1px solid var(--border);
-    }
-    .export-box h3 {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.2rem;
-      color: var(--text);
-      margin-bottom: 6px;
-    }
-    .export-box p { color: var(--text-2); font-size: 0.85rem; }
-    .spinner {
-      width: 36px; height: 36px;
-      border: 3px solid var(--border);
-      border-top-color: var(--red);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 16px auto 0;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ═══════════════════════════════════════
-       RESPONSIVE
-    ═══════════════════════════════════════ */
-    @media (max-width: 720px) {
-      main { flex-direction: column; }
-      .resize-handle { display: none; }
-      .pane { flex: unset; height: 50dvh; }
-      .pane.editor-pane { border-bottom: 2px solid var(--border); }
-      .app-title { font-size: 1rem; }
-      .btn span { display: none; }
-      .btn { padding: 7px 10px; }
-    }
-
-    @media (max-width: 480px) {
-      .toolbar { gap: 2px; padding: 5px 10px; }
-      #editor { padding: 14px; font-size: 0.82rem; }
-      .preview-wrap { padding: 16px; }
-    }
-
-    /* ═══════════════════════════════════════
-       WELCOME PLACEHOLDER
-    ═══════════════════════════════════════ */
-    .preview-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      gap: 10px;
-      color: var(--text-2);
-      font-family: 'Playfair Display', serif;
-      text-align: center;
-      padding: 40px;
-    }
-    .preview-empty .big { font-size: 3rem; line-height: 1; }
-    .preview-empty .sub { font-size: 1.1rem; color: var(--text-2); font-style: italic; }
-    .preview-empty .hint { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--line-num); margin-top: 4px; }
-
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Markdown Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+/* ══════════════════════════════════════════
+   THEMES  (6 total)
+══════════════════════════════════════════ */
+/* 1 – Parchment (warm white) */
+[data-theme="parchment"]{
+  --bg:#f8f5f0;--surf:#ffffff;--surf2:#f1ede6;
+  --bdr:#e2d9cc;--txt:#1a1208;--txt2:#6b5f50;
+  --sh:rgba(100,80,40,.1);--sh2:rgba(100,80,40,.18);
+  --ac:#e63946;--ac2:#f4a261;--ac3:#1d3557;
+  --hdr:#1d3557;--hdr-t:#fff;
+  --ed:#fdfaf6;--scr:#ccc;
+  --cbg:#f1ede6;--cc:#c62e3b;
+}
+/* 2 – Ocean Blue */
+[data-theme="ocean"]{
+  --bg:#e8f4f8;--surf:#ffffff;--surf2:#d4edf5;
+  --bdr:#9dc8db;--txt:#0a2540;--txt2:#3a6e8a;
+  --sh:rgba(0,80,120,.1);--sh2:rgba(0,80,120,.18);
+  --ac:#0077b6;--ac2:#00b4d8;--ac3:#023e8a;
+  --hdr:#023e8a;--hdr-t:#fff;
+  --ed:#f0f8fc;--scr:#9dc8db;
+  --cbg:#d4edf5;--cc:#0077b6;
+}
+/* 3 – Crimson Red */
+[data-theme="crimson"]{
+  --bg:#fff0f0;--surf:#ffffff;--surf2:#ffe0e0;
+  --bdr:#f5b8b8;--txt:#2a0a0a;--txt2:#7a3030;
+  --sh:rgba(150,0,0,.1);--sh2:rgba(150,0,0,.18);
+  --ac:#c9184a;--ac2:#ff4d6d;--ac3:#800f2f;
+  --hdr:#800f2f;--hdr-t:#fff;
+  --ed:#fff7f7;--scr:#f5b8b8;
+  --cbg:#ffe0e0;--cc:#c9184a;
+}
+/* 4 – Forest Green */
+[data-theme="forest"]{
+  --bg:#edf5ee;--surf:#ffffff;--surf2:#d8edda;
+  --bdr:#9ec4a1;--txt:#0d2b10;--txt2:#3a6b3e;
+  --sh:rgba(20,80,30,.1);--sh2:rgba(20,80,30,.18);
+  --ac:#2d6a4f;--ac2:#52b788;--ac3:#1b4332;
+  --hdr:#1b4332;--hdr-t:#fff;
+  --ed:#f3faf4;--scr:#9ec4a1;
+  --cbg:#d8edda;--cc:#2d6a4f;
+}
+/* 5 – Lavender */
+[data-theme="lavender"]{
+  --bg:#f3f0fc;--surf:#ffffff;--surf2:#e8e2f8;
+  --bdr:#c4b4ea;--txt:#1a0a38;--txt2:#5a4080;
+  --sh:rgba(80,30,150,.1);--sh2:rgba(80,30,150,.18);
+  --ac:#7b2d8b;--ac2:#b56fd8;--ac3:#4a1572;
+  --hdr:#4a1572;--hdr-t:#fff;
+  --ed:#f8f5fe;--scr:#c4b4ea;
+  --cbg:#e8e2f8;--cc:#7b2d8b;
+}
+/* 6 – Midnight (dark) */
+[data-theme="midnight"]{
+  --bg:#0d1b2a;--surf:#132236;--surf2:#1a2e47;
+  --bdr:#243d56;--txt:#eae6df;--txt2:#9badc0;
+  --sh:rgba(0,0,0,.3);--sh2:rgba(0,0,0,.5);
+  --ac:#f4a261;--ac2:#e63946;--ac3:#457b9d;
+  --hdr:#09131e;--hdr-t:#eae6df;
+  --ed:#0f1e30;--scr:#2a4060;
+  --cbg:#1a2e47;--cc:#f4a261;
+}
+
+/* ══════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);color:var(--txt);
+  height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  transition:background .3s,color .3s;
+}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--scr);border-radius:3px}
+
+/* ══════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════ */
+header{
+  position:sticky;top:0;z-index:100;
+  background:var(--hdr);color:var(--hdr-t);
+  height:56px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 16px;
+  box-shadow:0 2px 12px var(--sh2);flex-shrink:0;gap:8px;
+}
+.hl{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{
+  width:32px;height:32px;background:var(--ac);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;box-shadow:0 0 0 2px var(--ac2);
+}
+.appt{
+  font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;
+  white-space:nowrap;color:var(--hdr-t);
+}
+.appt span{color:var(--ac2)}
+.hr2{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
+
+/* ── Buttons ── */
+.btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:8px;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;
+  transition:all .18s ease;white-space:nowrap;
+}
+.bg{background:rgba(255,255,255,.09);color:var(--hdr-t);border:1px solid rgba(255,255,255,.16)}
+.bg:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)}
+.ba{background:var(--ac2);color:#1a1208;border:1px solid transparent}
+.ba:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 4px 12px var(--sh2)}
+.btn svg{flex-shrink:0}
+
+/* ── Theme Picker ── */
+.tpick{
+  display:flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:10px;padding:4px 10px;
+}
+.tpick-lbl{font-size:.68rem;color:rgba(255,255,255,.55);letter-spacing:.05em;text-transform:uppercase;margin-right:2px;white-space:nowrap}
+.tdot{
+  width:19px;height:19px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.22);
+  cursor:pointer;transition:transform .18s,border-color .18s;flex-shrink:0;
+}
+.tdot:hover{transform:scale(1.3);border-color:rgba(255,255,255,.7)}
+.tdot.on{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.4)}
+.tdot[data-t="parchment"]{background:linear-gradient(135deg,#f8f5f0 50%,#e63946)}
+.tdot[data-t="ocean"]    {background:linear-gradient(135deg,#e8f4f8 50%,#0077b6)}
+.tdot[data-t="crimson"]  {background:linear-gradient(135deg,#fff0f0 50%,#c9184a)}
+.tdot[data-t="forest"]   {background:linear-gradient(135deg,#edf5ee 50%,#2d6a4f)}
+.tdot[data-t="lavender"] {background:linear-gradient(135deg,#f3f0fc 50%,#7b2d8b)}
+.tdot[data-t="midnight"] {background:linear-gradient(135deg,#0d1b2a 50%,#f4a261)}
+
+/* Tooltip */
+.tdot{position:relative}
+.tdot::after{
+  content:attr(data-label);
+  position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);
+  background:#000;color:#fff;font-size:.6rem;padding:2px 6px;border-radius:4px;
+  white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s;
+}
+.tdot:hover::after{opacity:1}
+
+/* ══════════════════════════════════════════
+   TOOLBAR
+══════════════════════════════════════════ */
+.toolbar{
+  background:var(--surf);border-bottom:1px solid var(--bdr);
+  padding:5px 14px;display:flex;align-items:center;
+  gap:3px;flex-shrink:0;flex-wrap:wrap;transition:background .3s,border-color .3s;
+}
+.tsep{width:1px;height:18px;background:var(--bdr);margin:0 3px}
+.tbtn{
+  background:none;border:1px solid transparent;border-radius:5px;
+  padding:3px 7px;cursor:pointer;font-size:.78rem;
+  font-family:'DM Sans',sans-serif;font-weight:500;
+  color:var(--txt2);transition:all .15s;display:flex;align-items:center;gap:3px;
+}
+.tbtn:hover{background:var(--surf2);border-color:var(--bdr);color:var(--txt)}
+.tb{font-weight:700}.ti{font-style:italic}
+.tr{margin-left:auto;display:flex;align-items:center;gap:8px}
+.ccount{font-size:.72rem;color:var(--txt2);font-family:'DM Mono',monospace}
+
+/* ══════════════════════════════════════════
+   MAIN LAYOUT
+══════════════════════════════════════════ */
+main{flex:1;display:flex;overflow:hidden;min-height:0}
+.pane{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+.phdr{
+  padding:7px 14px;background:var(--surf2);border-bottom:1px solid var(--bdr);
+  font-size:.7rem;font-weight:500;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--txt2);display:flex;align-items:center;gap:8px;flex-shrink:0;
+  transition:background .3s,border-color .3s;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ac);flex-shrink:0}
+.rsz{width:5px;background:var(--bdr);cursor:col-resize;flex-shrink:0;transition:background .2s}
+.rsz:hover,.rsz.drag{background:var(--ac2)}
+
+/* Editor */
+.ewrap{flex:1;overflow:hidden}
+#editor{
+  width:100%;height:100%;resize:none;border:none;outline:none;
+  background:var(--ed);color:var(--txt);
+  font-family:'DM Mono',monospace;font-size:.875rem;line-height:1.75;
+  padding:20px;tab-size:2;overflow:auto;transition:background .3s,color .3s;
+}
+#editor::placeholder{color:var(--txt2);opacity:.5}
+
+/* Preview */
+.pwrap{flex:1;overflow-y:auto;padding:24px 28px;background:var(--surf);transition:background .3s}
+
+/* ══════════════════════════════════════════
+   RENDERED MARKDOWN
+══════════════════════════════════════════ */
+#preview{max-width:800px;margin:0 auto;font-family:'DM Sans',sans-serif;font-size:.95rem;line-height:1.8;color:var(--txt)}
+#preview h1,#preview h2,#preview h3,
+#preview h4,#preview h5,#preview h6{
+  font-family:'Playfair Display',serif;margin:1.5em 0 .5em;
+  line-height:1.25;color:var(--txt);
+}
+#preview h1{font-size:2rem;border-bottom:3px solid var(--ac);padding-bottom:.3em}
+#preview h2{font-size:1.55rem;border-bottom:1px solid var(--bdr);padding-bottom:.2em}
+#preview h3{font-size:1.25rem;color:var(--ac3)}
+#preview h4{font-size:1.05rem}
+#preview p{margin:.7em 0}
+#preview a{color:var(--ac);text-underline-offset:3px}
+#preview strong{font-weight:700}
+#preview em{font-style:italic;color:var(--txt2)}
+#preview del{opacity:.6;text-decoration:line-through}
+#preview ul,#preview ol{padding-left:1.6em;margin:.6em 0}
+#preview li{margin:.3em 0}
+#preview li::marker{color:var(--ac)}
+#preview blockquote{
+  border-left:4px solid var(--ac2);margin:1em 0;
+  padding:.6em 1em;background:var(--surf2);
+  border-radius:0 8px 8px 0;color:var(--txt2);font-style:italic;
+}
+#preview hr{border:none;border-top:2px solid var(--bdr);margin:1.5em 0}
+#preview code{
+  font-family:'DM Mono',monospace;font-size:.82em;
+  background:var(--cbg);padding:.15em .4em;border-radius:4px;color:var(--cc);
+}
+#preview pre{
+  margin:1em 0;border-radius:10px;overflow:hidden;
+  border:1px solid var(--bdr);box-shadow:0 2px 8px var(--sh);position:relative;
+}
+#preview pre code{
+  background:var(--cbg);color:var(--txt);
+  padding:16px 20px;font-size:.845rem;display:block;overflow-x:auto;
+  border-radius:0;
+}
+.clang{
+  position:absolute;top:0;right:0;
+  background:var(--ac3);color:#fff;
+  font-family:'DM Mono',monospace;font-size:.65rem;
+  padding:2px 8px;border-radius:0 9px 0 6px;
+  letter-spacing:.05em;opacity:.9;pointer-events:none;
+}
+#preview table{
+  width:100%;border-collapse:collapse;margin:1em 0;
+  font-size:.9rem;border-radius:10px;overflow:hidden;
+  box-shadow:0 2px 8px var(--sh);
+}
+#preview thead tr{background:var(--ac3);color:#fff}
+#preview th,#preview td{padding:10px 14px;text-align:left}
+#preview tbody tr:nth-child(odd){background:var(--surf)}
+#preview tbody tr:nth-child(even){background:var(--surf2)}
+#preview tbody tr:hover{background:rgba(128,128,128,.1)}
+#preview img{max-width:100%;border-radius:8px;box-shadow:0 2px 12px var(--sh);margin:.5em 0}
+#preview input[type="checkbox"]{accent-color:var(--ac);margin-right:5px}
+
+/* Empty state */
+.empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:10px;color:var(--txt2);font-family:'Playfair Display',serif;
+  text-align:center;padding:40px;
+}
+.empty .big{font-size:3rem;line-height:1}
+.empty .sub{font-size:1.05rem;font-style:italic}
+.empty .hint{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--scr);margin-top:4px}
+
+/* ══════════════════════════════════════════
+   STATUS BAR
+══════════════════════════════════════════ */
+.sbar{
+  height:26px;background:var(--hdr);color:rgba(255,255,255,.55);
+  display:flex;align-items:center;padding:0 16px;gap:14px;
+  font-size:.7rem;font-family:'DM Mono',monospace;flex-shrink:0;
+}
+.sbar span{white-space:nowrap}
+.ssep{color:rgba(255,255,255,.2)}
+.spill{margin-left:auto;display:flex;align-items:center;gap:4px;color:rgba(255,255,255,.55);transition:opacity .4s}
+.spill.hidden{opacity:0}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--ac2)}
+
+/* ══════════════════════════════════════════
+   TOAST & OVERLAY
+══════════════════════════════════════════ */
+#toast{
+  position:fixed;bottom:40px;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--ac3);color:#fff;
+  padding:9px 20px;border-radius:10px;font-size:.84rem;
+  pointer-events:none;opacity:0;transition:opacity .3s,transform .3s;
+  z-index:999;border:1px solid rgba(255,255,255,.15);
+  box-shadow:0 4px 20px var(--sh2);white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#expov{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.55);z-index:500;
+  align-items:center;justify-content:center;
+}
+#expov.on{display:flex}
+.ebox{
+  background:var(--surf);border-radius:14px;padding:28px 32px;
+  text-align:center;box-shadow:0 16px 40px var(--sh2);
+  border:1px solid var(--bdr);
+}
+.ebox h3{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--txt);margin-bottom:6px}
+.ebox p{color:var(--txt2);font-size:.85rem}
+.spin{
+  width:36px;height:36px;border:3px solid var(--bdr);
+  border-top-color:var(--ac);border-radius:50%;
+  animation:sp .8s linear infinite;margin:16px auto 0;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media(max-width:720px){
+  main{flex-direction:column}
+  .rsz{display:none}
+  .pane{flex:unset;height:50dvh}
+  .pane.ep{border-bottom:2px solid var(--bdr)}
+  .appt{font-size:1rem}
+  .btn span{display:none}
+  .btn{padding:6px 9px}
+  .tpick-lbl{display:none}
+}
+@media(max-width:480px){
+  .toolbar{gap:2px;padding:4px 8px}
+  #editor{padding:14px;font-size:.82rem}
+  .pwrap{padding:16px}
+  header{padding:0 10px;gap:5px}
+  .tpick{gap:3px;padding:3px 7px}
+  .tdot{width:16px;height:16px}
+}
+</style>
 </head>
+<body data-theme="parchment">
 
-<body>
-
-  <!-- ═══ HEADER ═══ -->
-  <header>
-    <div class="header-left">
-      <div class="logo-icon">⚓</div>
-      <span class="app-title">Markdown <span>Viewer</span></span>
+<!-- HEADER -->
+<header>
+  <div class="hl">
+    <div class="logo">⚓</div>
+    <span class="appt">Markdown <span>Viewer</span></span>
+  </div>
+  <div class="hr2">
+    <!-- Theme Picker -->
+    <div class="tpick">
+      <span class="tpick-lbl">Theme</span>
+      <div class="tdot on" data-t="parchment" data-label="Parchment"></div>
+      <div class="tdot"    data-t="ocean"     data-label="Ocean Blue"></div>
+      <div class="tdot"    data-t="crimson"   data-label="Crimson Red"></div>
+      <div class="tdot"    data-t="forest"    data-label="Forest"></div>
+      <div class="tdot"    data-t="lavender"  data-label="Lavender"></div>
+      <div class="tdot"    data-t="midnight"  data-label="Midnight"></div>
     </div>
-    <div class="header-right">
-      <!-- Extra tools -->
-      <button class="btn btn-ghost btn-sm" id="copyHtmlBtn" title="Copy rendered HTML">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        <span>Copy HTML</span>
-      </button>
-      <button class="btn btn-ghost btn-sm" id="downloadMdBtn" title="Download .md file">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span>.md</span>
-      </button>
-      <button class="btn btn-ghost btn-sm" id="darkToggle" title="Toggle dark mode">
-        <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-        <svg class="icon-sun"  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-        <span>Theme</span>
-      </button>
-      <button class="btn btn-gold" id="exportPdfBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <span>Export PDF</span>
-      </button>
-    </div>
-  </header>
+    <!-- Buttons -->
+    <button class="btn bg" id="copyHtmlBtn" title="Copy HTML">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      <span>Copy HTML</span>
+    </button>
+    <button class="btn bg" id="downloadMdBtn" title="Download .md">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>.md</span>
+    </button>
+    <button class="btn ba" id="exportPdfBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Export PDF</span>
+    </button>
+  </div>
+</header>
 
-  <!-- ═══ TOOLBAR ═══ -->
-  <div class="toolbar">
-    <button class="tbtn tbtn-bold"   data-wrap="**"  data-title="Bold">B</button>
-    <button class="tbtn tbtn-italic" data-wrap="*"   data-title="Italic">I</button>
-    <button class="tbtn" data-wrap="~~" data-title="Strikethrough"><s>S</s></button>
-    <div class="toolbar-sep"></div>
-    <button class="tbtn" data-prefix="# "   data-title="H1">H1</button>
-    <button class="tbtn" data-prefix="## "  data-title="H2">H2</button>
-    <button class="tbtn" data-prefix="### " data-title="H3">H3</button>
-    <div class="toolbar-sep"></div>
-    <button class="tbtn" data-prefix="- "   data-title="Bullet list">• List</button>
-    <button class="tbtn" data-prefix="1. "  data-title="Numbered list"># List</button>
-    <button class="tbtn" data-prefix="> "   data-title="Blockquote">❝ Quote</button>
-    <div class="toolbar-sep"></div>
-    <button class="tbtn" data-snippet="```\n\n```" data-title="Code block">{ }</button>
-    <button class="tbtn" data-snippet="| Col 1 | Col 2 | Col 3 |\n|-------|-------|-------|\n| A     | B     | C     |" data-title="Table">⊞ Table</button>
-    <button class="tbtn" data-snippet="---" data-title="Horizontal rule">― HR</button>
-    <div class="toolbar-sep"></div>
-    <button class="tbtn" data-snippet="[text](url)" data-title="Link">🔗 Link</button>
-    <button class="tbtn" data-snippet="![alt](url)" data-title="Image">🖼 Img</button>
-    <div class="toolbar-right">
-      <button class="tbtn" id="clearBtn" title="Clear editor">✕ Clear</button>
-      <span class="char-count" id="charCount">0 chars</span>
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <button class="tbtn tb"  data-wrap="**" title="Bold">B</button>
+  <button class="tbtn ti"  data-wrap="*"  title="Italic">I</button>
+  <button class="tbtn"     data-wrap="~~" title="Strikethrough"><del>S</del></button>
+  <div class="tsep"></div>
+  <button class="tbtn" data-prefix="# "   title="H1">H1</button>
+  <button class="tbtn" data-prefix="## "  title="H2">H2</button>
+  <button class="tbtn" data-prefix="### " title="H3">H3</button>
+  <div class="tsep"></div>
+  <button class="tbtn" data-prefix="- "  title="Bullet list">• List</button>
+  <button class="tbtn" data-prefix="1. " title="Ordered list"># List</button>
+  <button class="tbtn" data-prefix="> "  title="Blockquote">❝ Quote</button>
+  <div class="tsep"></div>
+  <button class="tbtn" data-snippet="```js\n\n```"              title="Code block">{ }</button>
+  <button class="tbtn" data-snippet="| Col 1 | Col 2 | Col 3 |\n|-------|-------|-------|\n| A | B | C |" title="Table">⊞ Table</button>
+  <button class="tbtn" data-snippet="---"                        title="HR">― HR</button>
+  <button class="tbtn" data-snippet="[text](https://)"           title="Link">🔗 Link</button>
+  <button class="tbtn" data-snippet="![alt](image-url)"          title="Image">🖼 Img</button>
+  <div class="tr">
+    <button class="tbtn" id="clearBtn">✕ Clear</button>
+    <span class="ccount" id="ccount">0 chars</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main id="mainLayout">
+  <!-- Editor Pane -->
+  <div class="pane ep" id="editorPane">
+    <div class="phdr">
+      <div class="dot"></div>EDITOR
+      <span id="syncTgl" style="margin-left:auto;cursor:pointer;font-size:.68rem;user-select:none" title="Toggle sync scroll">⇅ sync on</span>
+    </div>
+    <div class="ewrap">
+      <textarea id="editor" spellcheck="false"
+        placeholder="# Start writing Markdown here…&#10;&#10;Watch the live preview on the right!"></textarea>
     </div>
   </div>
-
-  <!-- ═══ MAIN ═══ -->
-  <main id="mainLayout">
-
-    <!-- Editor Pane -->
-    <div class="pane editor-pane" id="editorPane">
-      <div class="pane-header">
-        <div class="dot"></div>
-        EDITOR
-      </div>
-      <div class="editor-wrap">
-        <textarea id="editor" spellcheck="false"
-          placeholder="# Start writing Markdown here…
-
-Type and watch the preview update in real time.
-
-**Bold**, *italic*, ~~strikethrough~~, `inline code`
-
-## Tables, code blocks, lists — all supported!"></textarea>
-      </div>
+  <!-- Resize -->
+  <div class="rsz" id="rsz"></div>
+  <!-- Preview Pane -->
+  <div class="pane" id="previewPane">
+    <div class="phdr">
+      <div class="dot" style="background:var(--ac2)"></div>PREVIEW
     </div>
-
-    <!-- Resize Handle -->
-    <div class="resize-handle" id="resizeHandle"></div>
-
-    <!-- Preview Pane -->
-    <div class="pane preview-pane" id="previewPane">
-      <div class="pane-header">
-        <div class="dot" style="background:var(--gold)"></div>
-        PREVIEW
-        <span id="syncScrollLabel" style="margin-left:auto;font-size:0.68rem;cursor:pointer;user-select:none;" title="Toggle sync scroll">⇅ sync</span>
-      </div>
-      <div class="preview-wrap" id="previewWrap">
-        <div id="preview">
-          <div class="preview-empty">
-            <div class="big">⚓</div>
-            <div class="sub">Your preview will appear here</div>
-            <div class="hint">Start typing in the editor →</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- ═══ STATUS BAR ═══ -->
-  <div class="status-bar">
-    <span id="wordCount">0 words</span>
-    <span class="status-sep">|</span>
-    <span id="lineCount">0 lines</span>
-    <span class="status-sep">|</span>
-    <span id="readTime">~0 min read</span>
-    <div class="saved-pill hidden" id="savedPill">
-      <div class="saved-dot"></div>
-      Saved
+    <div class="pwrap" id="pwrap">
+      <div id="preview"></div>
     </div>
   </div>
+</main>
 
-  <!-- ═══ EXPORT OVERLAY ═══ -->
-  <div id="exportOverlay">
-    <div class="export-box">
-      <h3>Exporting PDF…</h3>
-      <p>Rendering your preview, please wait.</p>
-      <div class="spinner"></div>
-    </div>
+<!-- STATUS BAR -->
+<div class="sbar">
+  <span id="sw">0 words</span>
+  <span class="ssep">|</span>
+  <span id="sl">0 lines</span>
+  <span class="ssep">|</span>
+  <span id="sc">0 chars</span>
+  <span class="ssep">|</span>
+  <span id="sr">~0 min read</span>
+  <div class="spill hidden" id="spill">
+    <div class="sdot"></div>Saved
   </div>
+</div>
 
-  <!-- ═══ TOAST ═══ -->
-  <div id="toast"></div>
+<!-- Export Overlay -->
+<div id="expov">
+  <div class="ebox">
+    <h3>Exporting PDF…</h3>
+    <p>Rendering your preview, please wait.</p>
+    <div class="spin"></div>
+  </div>
+</div>
 
+<!-- Toast -->
+<div id="toast"></div>
 
-  <script>
-  (() => {
-    /* ─── Elements ─── */
-    const editor        = document.getElementById('editor');
-    const preview       = document.getElementById('preview');
-    const previewWrap   = document.getElementById('previewWrap');
-    const charCount     = document.getElementById('charCount');
-    const wordCount     = document.getElementById('wordCount');
-    const lineCount     = document.getElementById('lineCount');
-    const readTime      = document.getElementById('readTime');
-    const savedPill     = document.getElementById('savedPill');
-    const darkToggle    = document.getElementById('darkToggle');
-    const exportPdfBtn  = document.getElementById('exportPdfBtn');
-    const copyHtmlBtn   = document.getElementById('copyHtmlBtn');
-    const downloadMdBtn = document.getElementById('downloadMdBtn');
-    const clearBtn      = document.getElementById('clearBtn');
-    const exportOverlay = document.getElementById('exportOverlay');
-    const resizeHandle  = document.getElementById('resizeHandle');
-    const editorPane    = document.getElementById('editorPane');
-    const previewPane   = document.getElementById('previewPane');
-    const syncScrollLbl = document.getElementById('syncScrollLabel');
-    const toast         = document.getElementById('toast');
-    const hlLightCSS    = document.getElementById('hljs-light');
-    const hlDarkCSS     = document.getElementById('hljs-dark');
+<!-- html2pdf (CDN — only needed for PDF export, everything else works offline) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-    /* ─── marked.js config ─── */
-    marked.setOptions({
-      breaks: true,
-      gfm: true,
-      langPrefix: 'language-',
-    });
+<script>
+/* ════════════════════════════════════════════
+   INLINE MARKDOWN PARSER — no CDN required!
+   Supports: headings, bold, italic, strike,
+   inline code, code blocks, blockquotes,
+   ordered/unordered lists, task lists,
+   tables, links, images, HR, paragraphs.
+════════════════════════════════════════════ */
+function parseMD(raw) {
+  const codeBlocks=[], inlines=[];
+  let s=raw;
 
-    // Custom renderer to add code-block wrapper + lang label
-    const renderer = new marked.Renderer();
-    renderer.code = (code, lang) => {
-      const validLang = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
-      const highlighted = hljs.highlight(code, { language: validLang }).value;
-      return `<div class="code-block-wrap">
-        <pre><code class="hljs language-${validLang}">${highlighted}</code></pre>
-        ${lang ? `<span class="code-lang-label">${lang}</span>` : ''}
-      </div>`;
-    };
-    marked.setOptions({ renderer });
+  /* 1. Extract fenced code blocks */
+  s=s.replace(/```(\w*)\n?([\s\S]*?)```/g,(_,lang,code)=>{
+    const i=codeBlocks.length; codeBlocks.push({lang:lang||'',code}); return '\x02B'+i+'\x03';
+  });
 
-    /* ─── Theme ─── */
-    let isDark = localStorage.getItem('md-theme') === 'dark';
-    applyTheme(isDark);
+  /* 2. Extract inline code */
+  s=s.replace(/`([^`\n]+)`/g,(_,c)=>{
+    const i=inlines.length; inlines.push(esc(c)); return '\x02I'+i+'\x03';
+  });
 
-    function applyTheme(dark) {
-      isDark = dark;
-      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-      hlLightCSS.disabled = dark;
-      hlDarkCSS.disabled  = !dark;
-      localStorage.setItem('md-theme', dark ? 'dark' : 'light');
-    }
+  /* 3. Escape remaining HTML */
+  s=s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-    darkToggle.addEventListener('click', () => applyTheme(!isDark));
+  /* 4. GFM Tables */
+  s=s.replace(/((?:^\|.+\|\s*\n){2,})/gm, blk=>{
+    const rows=blk.trim().split('\n');
+    if(rows.length<2) return blk;
+    const pr=r=>r.replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+    const ths=pr(rows[0]).map(h=>`<th>${inlineFmt(h)}</th>`).join('');
+    const trs=rows.slice(2).map(r=>'<tr>'+pr(r).map(c=>`<td>${inlineFmt(c)}</td>`).join('')+'</tr>').join('');
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>\n`;
+  });
 
-    /* ─── Auto-save & restore ─── */
-    const STORAGE_KEY = 'md-viewer-content';
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved !== null) {
-      editor.value = saved;
-    } else {
-      editor.value = defaultContent();
-    }
-    renderPreview();
+  /* 5. Headings */
+  s=s.replace(/^######\s+(.+)$/gm,(_,t)=>`<h6>${inlineFmt(t)}</h6>`);
+  s=s.replace(/^#####\s+(.+)$/gm, (_,t)=>`<h5>${inlineFmt(t)}</h5>`);
+  s=s.replace(/^####\s+(.+)$/gm,  (_,t)=>`<h4>${inlineFmt(t)}</h4>`);
+  s=s.replace(/^###\s+(.+)$/gm,   (_,t)=>`<h3>${inlineFmt(t)}</h3>`);
+  s=s.replace(/^##\s+(.+)$/gm,    (_,t)=>`<h2>${inlineFmt(t)}</h2>`);
+  s=s.replace(/^#\s+(.+)$/gm,     (_,t)=>`<h1>${inlineFmt(t)}</h1>`);
 
-    let saveTimer = null;
-    function scheduleSave() {
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        localStorage.setItem(STORAGE_KEY, editor.value);
-        showSavedPill();
-      }, 600);
-    }
+  /* 6. HR */
+  s=s.replace(/^[-*_]{3,}\s*$/gm,'<hr>');
 
-    function showSavedPill() {
-      savedPill.classList.remove('hidden');
-      setTimeout(() => savedPill.classList.add('hidden'), 2000);
-    }
+  /* 7. Blockquotes */
+  s=s.replace(/^((?:>\s?.*\n?)+)/gm, m=>{
+    const inner=m.replace(/^>\s?/gm,'').trimEnd();
+    return `<blockquote>${inlineFmt(inner)}</blockquote>\n`;
+  });
 
-    /* ─── Live render ─── */
-    editor.addEventListener('input', () => {
-      renderPreview();
-      updateStats();
-      scheduleSave();
-    });
-
-    function renderPreview() {
-      const md = editor.value.trim();
-      if (!md) {
-        preview.innerHTML = `<div class="preview-empty">
-          <div class="big">⚓</div>
-          <div class="sub">Your preview will appear here</div>
-          <div class="hint">Start typing in the editor →</div>
-        </div>`;
-        return;
+  /* 8. Unordered lists (with task list support) */
+  s=s.replace(/((?:^[ \t]*[-*+]\s+.+\n?)+)/gm, m=>{
+    const items=m.trim().split('\n').map(line=>{
+      const content=line.replace(/^[ \t]*[-*+]\s+/,'');
+      const task=content.match(/^\[([ xX])\]\s*(.*)/);
+      if(task){
+        const chk=task[1].toLowerCase()==='x'?'checked':'';
+        return `<li><input type="checkbox" disabled ${chk}> ${inlineFmt(task[2])}</li>`;
       }
-      preview.innerHTML = marked.parse(md);
-    }
+      return `<li>${inlineFmt(content)}</li>`;
+    }).join('');
+    return `<ul>${items}</ul>\n`;
+  });
 
-    /* ─── Stats ─── */
-    function updateStats() {
-      const text  = editor.value;
-      const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
-      const lines = text === '' ? 0 : text.split('\n').length;
-      const chars = text.length;
-      const mins  = Math.max(1, Math.ceil(words / 200));
-      charCount.textContent = `${chars.toLocaleString()} char${chars !== 1 ? 's' : ''}`;
-      wordCount.textContent = `${words.toLocaleString()} word${words !== 1 ? 's' : ''}`;
-      lineCount.textContent = `${lines} line${lines !== 1 ? 's' : ''}`;
-      readTime.textContent  = `~${mins} min read`;
-    }
-    updateStats();
+  /* 9. Ordered lists */
+  s=s.replace(/((?:^\d+\.\s+.+\n?)+)/gm, m=>{
+    const items=m.trim().split('\n').map(l=>`<li>${inlineFmt(l.replace(/^\d+\.\s+/,''))}</li>`).join('');
+    return `<ol>${items}</ol>\n`;
+  });
 
-    /* ─── Toolbar ─── */
-    document.querySelector('.toolbar').addEventListener('click', e => {
-      const btn = e.target.closest('[data-wrap],[data-prefix],[data-snippet]');
-      if (!btn) return;
+  /* 10. Paragraphs */
+  const isBlock=l=>/^<(h[1-6]|ul|ol|blockquote|hr|table|pre|div)[^>]*>/.test(l.trim())
+                 ||/\x02B\d+\x03/.test(l);
+  const lines2=s.split('\n'); const out=[]; let para=[];
+  const flushP=()=>{
+    if(!para.length)return;
+    const c=para.join(' ').trim();
+    if(c) out.push(`<p>${inlineFmt(c)}</p>`);
+    para=[];
+  };
+  for(const l of lines2){
+    if(isBlock(l)){flushP();out.push(l);}
+    else if(l.trim()===''){flushP();}
+    else{para.push(l);}
+  }
+  flushP();
+  s=out.join('\n');
 
-      editor.focus();
-      const start = editor.selectionStart;
-      const end   = editor.selectionEnd;
-      const val   = editor.value;
-      let   newVal, cursor;
+  /* 11. Restore inline code */
+  s=s.replace(/\x02I(\d+)\x03/g,(_,i)=>`<code>${inlines[i]}</code>`);
 
-      if (btn.dataset.wrap) {
-        const w = btn.dataset.wrap;
-        const sel = val.slice(start, end) || 'text';
-        newVal = val.slice(0, start) + w + sel + w + val.slice(end);
-        cursor = start + w.length + sel.length + w.length;
-      } else if (btn.dataset.prefix) {
-        const p = btn.dataset.prefix;
-        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
-        newVal = val.slice(0, lineStart) + p + val.slice(lineStart);
-        cursor = start + p.length;
-      } else if (btn.dataset.snippet) {
-        const s = btn.dataset.snippet;
-        newVal = val.slice(0, start) + '\n' + s + '\n' + val.slice(end);
-        cursor = start + 1 + s.length + 1;
-      }
+  /* 12. Restore code blocks */
+  s=s.replace(/\x02B(\d+)\x03/g,(_,i)=>{
+    const{lang,code}=codeBlocks[i];
+    const label=lang?`<span class="clang">${lang}</span>`:'';
+    return `<div style="position:relative"><pre><code>${esc(code)}</code></pre>${label}</div>`;
+  });
 
-      editor.value = newVal;
-      editor.selectionStart = editor.selectionEnd = cursor;
-      editor.dispatchEvent(new Event('input'));
-    });
+  return s;
+}
 
-    /* Tab key in editor */
-    editor.addEventListener('keydown', e => {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const s = editor.selectionStart;
-        editor.value = editor.value.slice(0, s) + '  ' + editor.value.slice(editor.selectionEnd);
-        editor.selectionStart = editor.selectionEnd = s + 2;
-      }
-    });
+function inlineFmt(s){
+  s=s.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/__(.+?)__/g,'<strong>$1</strong>');
+  s=s.replace(/\*([^*\n]+?)\*/g,'<em>$1</em>');
+  s=s.replace(/_([^_\n]+?)_/g,'<em>$1</em>');
+  s=s.replace(/~~(.+?)~~/g,'<del>$1</del>');
+  s=s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1">');
+  s=s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s=s.replace(/  \n/g,'<br>');
+  return s;
+}
 
-    /* ─── Clear ─── */
-    clearBtn.addEventListener('click', () => {
-      if (!editor.value || confirm('Clear the editor? This cannot be undone.')) {
-        editor.value = '';
-        editor.dispatchEvent(new Event('input'));
-      }
-    });
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
-    /* ─── Copy HTML ─── */
-    copyHtmlBtn.addEventListener('click', () => {
-      const html = preview.innerHTML;
-      navigator.clipboard.writeText(html).then(() => showToast('HTML copied to clipboard!'));
-    });
+/* ════════════════════════════════════════════
+   APP LOGIC
+════════════════════════════════════════════ */
+const editor=document.getElementById('editor');
+const preview=document.getElementById('preview');
+const pwrap=document.getElementById('pwrap');
+const spill=document.getElementById('spill');
+const exportPdfBtn=document.getElementById('exportPdfBtn');
+const copyHtmlBtn=document.getElementById('copyHtmlBtn');
+const downloadMdBtn=document.getElementById('downloadMdBtn');
+const clearBtn=document.getElementById('clearBtn');
+const expov=document.getElementById('expov');
+const rsz=document.getElementById('rsz');
+const editorPane=document.getElementById('editorPane');
+const previewPane=document.getElementById('previewPane');
+const syncTgl=document.getElementById('syncTgl');
+const toast=document.getElementById('toast');
 
-    /* ─── Download .md ─── */
-    downloadMdBtn.addEventListener('click', () => {
-      const blob = new Blob([editor.value], { type: 'text/markdown' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'document.md';
-      a.click();
-      URL.revokeObjectURL(a.href);
-      showToast('Downloaded document.md');
-    });
+/* ── Theme ── */
+const TK='md-theme';
+let theme=localStorage.getItem(TK)||'parchment';
+setTheme(theme);
+document.querySelectorAll('.tdot').forEach(d=>d.addEventListener('click',()=>setTheme(d.dataset.t)));
+function setTheme(t){
+  theme=t;
+  document.body.setAttribute('data-theme',t);
+  document.querySelectorAll('.tdot').forEach(d=>d.classList.toggle('on',d.dataset.t===t));
+  localStorage.setItem(TK,t);
+}
 
-    /* ─── Export PDF ─── */
-    exportPdfBtn.addEventListener('click', async () => {
-      if (!editor.value.trim()) { showToast('Nothing to export!'); return; }
-      exportOverlay.classList.add('active');
+/* ── Load content ── */
+const CK='md-content';
+editor.value=localStorage.getItem(CK)??defaultContent();
+render();
 
-      // Clone preview for PDF (clean, no empty-state)
-      const clone = preview.cloneNode(true);
-      clone.style.cssText = `
-        padding: 20px; max-width: 100%;
-        font-family: Georgia, serif;
-        color: #111; background: #fff;
-      `;
+/* ── Render ── */
+function render(){
+  const md=editor.value.trim();
+  if(!md){
+    preview.innerHTML=`<div class="empty">
+      <div class="big">⚓</div>
+      <div class="sub">Your preview appears here</div>
+      <div class="hint">Start typing in the editor →</div>
+    </div>`;
+  } else {
+    preview.innerHTML=parseMD(md);
+  }
+  updateStats();
+}
+editor.addEventListener('input',()=>{render();scheduleSave()});
 
-      // Remove empty-state if present
-      const emptyState = clone.querySelector('.preview-empty');
-      if (emptyState) emptyState.remove();
+/* ── Stats ── */
+function updateStats(){
+  const t=editor.value;
+  const w=t.trim()===''?0:t.trim().split(/\s+/).length;
+  const l=t===''?0:t.split('\n').length;
+  const c=t.length;
+  document.getElementById('sw').textContent=`${w.toLocaleString()} word${w!==1?'s':''}`;
+  document.getElementById('sl').textContent=`${l} line${l!==1?'s':''}`;
+  document.getElementById('sc').textContent=`${c.toLocaleString()} char${c!==1?'s':''}`;
+  document.getElementById('sr').textContent=`~${Math.max(1,Math.ceil(w/200))} min read`;
+  document.getElementById('ccount').textContent=`${c.toLocaleString()} chars`;
+}
+updateStats();
 
-      const opt = {
-        margin:      [10, 10, 10, 10],
-        filename:    'markdown-export.pdf',
-        image:       { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak:   { mode: ['avoid-all', 'css'] },
-      };
+/* ── Auto-save ── */
+let saveT;
+function scheduleSave(){
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>{
+    localStorage.setItem(CK,editor.value);
+    spill.classList.remove('hidden');
+    setTimeout(()=>spill.classList.add('hidden'),2000);
+  },600);
+}
 
-      try {
-        await html2pdf().set(opt).from(clone).save();
-        showToast('PDF exported successfully!');
-      } catch (err) {
-        showToast('Export failed. Try again.');
-        console.error(err);
-      } finally {
-        exportOverlay.classList.remove('active');
-      }
-    });
+/* ── Toolbar ── */
+document.querySelector('.toolbar').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-wrap],[data-prefix],[data-snippet]');
+  if(!btn)return;
+  editor.focus();
+  const s=editor.selectionStart,e2=editor.selectionEnd,v=editor.value;
+  let nv,cur;
+  if(btn.dataset.wrap){
+    const w=btn.dataset.wrap,sel=v.slice(s,e2)||'text';
+    nv=v.slice(0,s)+w+sel+w+v.slice(e2); cur=s+w.length+sel.length+w.length;
+  } else if(btn.dataset.prefix){
+    const p=btn.dataset.prefix,ls=v.lastIndexOf('\n',s-1)+1;
+    nv=v.slice(0,ls)+p+v.slice(ls); cur=s+p.length;
+  } else {
+    const sn=btn.dataset.snippet;
+    nv=v.slice(0,s)+'\n'+sn+'\n'+v.slice(e2); cur=s+1+sn.length+1;
+  }
+  editor.value=nv; editor.selectionStart=editor.selectionEnd=cur;
+  editor.dispatchEvent(new Event('input'));
+});
 
-    /* ─── Sync scroll ─── */
-    let syncScroll = true;
-    syncScrollLbl.addEventListener('click', () => {
-      syncScroll = !syncScroll;
-      syncScrollLbl.style.color = syncScroll ? '' : 'var(--red)';
-      syncScrollLbl.textContent = syncScroll ? '⇅ sync' : '⇅ off';
-      showToast(syncScroll ? 'Sync scroll ON' : 'Sync scroll OFF');
-    });
+/* Tab key */
+editor.addEventListener('keydown',e=>{
+  if(e.key==='Tab'){
+    e.preventDefault();
+    const s=editor.selectionStart;
+    editor.value=editor.value.slice(0,s)+'  '+editor.value.slice(editor.selectionEnd);
+    editor.selectionStart=editor.selectionEnd=s+2;
+  }
+});
 
-    editor.addEventListener('scroll', () => {
-      if (!syncScroll) return;
-      const ratio = editor.scrollTop / (editor.scrollHeight - editor.clientHeight || 1);
-      previewWrap.scrollTop = ratio * (previewWrap.scrollHeight - previewWrap.clientHeight);
-    });
+/* ── Clear ── */
+clearBtn.addEventListener('click',()=>{
+  if(!editor.value||confirm('Clear all content?')){editor.value='';editor.dispatchEvent(new Event('input'));}
+});
 
-    /* ─── Resize handle ─── */
-    let isResizing = false;
-    resizeHandle.addEventListener('mousedown', e => {
-      isResizing = true;
-      resizeHandle.classList.add('dragging');
-      e.preventDefault();
-    });
-    document.addEventListener('mousemove', e => {
-      if (!isResizing) return;
-      const main   = document.getElementById('mainLayout');
-      const rect   = main.getBoundingClientRect();
-      const offset = e.clientX - rect.left;
-      const total  = rect.width - 5; // subtract handle width
-      const leftPct  = Math.max(20, Math.min(80, (offset / total) * 100));
-      const rightPct = 100 - leftPct;
-      editorPane.style.flex  = `0 0 ${leftPct}%`;
-      previewPane.style.flex = `0 0 ${rightPct}%`;
-    });
-    document.addEventListener('mouseup', () => {
-      if (isResizing) {
-        isResizing = false;
-        resizeHandle.classList.remove('dragging');
-      }
-    });
+/* ── Copy HTML ── */
+copyHtmlBtn.addEventListener('click',()=>{
+  navigator.clipboard.writeText(preview.innerHTML)
+    .then(()=>showToast('HTML copied!'))
+    .catch(()=>showToast('Copy failed — try another browser'));
+});
 
-    /* ─── Toast ─── */
-    let toastTimer = null;
-    function showToast(msg) {
-      toast.textContent = msg;
-      toast.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
-    }
+/* ── Download .md ── */
+downloadMdBtn.addEventListener('click',()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([editor.value],{type:'text/markdown'}));
+  a.download='document.md'; a.click(); URL.revokeObjectURL(a.href);
+  showToast('Downloaded document.md');
+});
 
-    /* ─── Default content ─── */
-    function defaultContent() {
-      return `# Welcome to Markdown Viewer ⚓
+/* ── Export PDF ── */
+exportPdfBtn.addEventListener('click',async()=>{
+  if(!editor.value.trim()){showToast('Nothing to export!');return}
+  if(typeof html2pdf==='undefined'){showToast('PDF lib not loaded — check internet');return}
+  expov.classList.add('on');
+  const clone=preview.cloneNode(true);
+  const emp=clone.querySelector('.empty'); if(emp)emp.remove();
+  clone.style.cssText='padding:20px;max-width:100%;font-family:Georgia,serif;color:#111;background:#fff';
+  try{
+    await html2pdf().set({
+      margin:[10,10,10,10],filename:'markdown-export.pdf',
+      image:{type:'jpeg',quality:.98},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+    }).from(clone).save();
+    showToast('PDF exported!');
+  }catch(err){showToast('Export failed — try again');}
+  finally{expov.classList.remove('on');}
+});
 
-A **real-time** Markdown editor with live preview, built with plain HTML, CSS & JS.
+/* ── Sync scroll ── */
+let syncOn=true;
+syncTgl.addEventListener('click',()=>{
+  syncOn=!syncOn;
+  syncTgl.textContent=syncOn?'⇅ sync on':'⇅ sync off';
+  syncTgl.style.color=syncOn?'':'var(--ac)';
+  showToast(syncOn?'Sync scroll ON':'Sync scroll OFF');
+});
+editor.addEventListener('scroll',()=>{
+  if(!syncOn)return;
+  const r=editor.scrollTop/(editor.scrollHeight-editor.clientHeight||1);
+  pwrap.scrollTop=r*(pwrap.scrollHeight-pwrap.clientHeight);
+});
+
+/* ── Resize handle ── */
+let rszOn=false;
+rsz.addEventListener('mousedown',e=>{rszOn=true;rsz.classList.add('drag');e.preventDefault()});
+document.addEventListener('mousemove',e=>{
+  if(!rszOn)return;
+  const rect=document.getElementById('mainLayout').getBoundingClientRect();
+  const pct=Math.max(20,Math.min(80,((e.clientX-rect.left)/(rect.width-5))*100));
+  editorPane.style.flex=`0 0 ${pct}%`;
+  previewPane.style.flex=`0 0 ${100-pct}%`;
+});
+document.addEventListener('mouseup',()=>{if(rszOn){rszOn=false;rsz.classList.remove('drag');}});
+
+/* ── Toast ── */
+let toastT;
+function showToast(msg){
+  toast.textContent=msg; toast.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>toast.classList.remove('show'),2400);
+}
+
+/* ── Default content ── */
+function defaultContent(){
+return `# Welcome to Markdown Viewer ⚓
+
+**Real-time preview** — works fully offline, no internet needed!
 
 ---
 
-## Features
+## 🎨 Try the 6 Themes
 
-- ✅ Live preview as you type
-- 🌙 Dark / Light theme toggle
-- 💾 Auto-save to localStorage
-- 📄 Export to PDF
-- 🔗 Copy rendered HTML
-- 📥 Download \`.md\` file
-- ⇅ Synchronized scrolling
-- ↔️ Draggable split pane
+Click the **coloured dots** in the header:
+
+| Dot | Theme | Accent colour |
+|-----|-------|---------------|
+| 🤍 | Parchment | Warm red & gold |
+| 🌊 | Ocean Blue | Deep navy & cyan |
+| ❤️ | Crimson Red | Bold crimson |
+| 🌲 | Forest | Rich forest green |
+| 💜 | Lavender | Royal purple |
+| 🌑 | Midnight | Dark / night mode |
 
 ---
 
-## Formatting Examples
+## Formatting Showcase
 
 **Bold**, *italic*, ~~strikethrough~~, and \`inline code\`.
 
@@ -1086,7 +787,7 @@ A **real-time** Markdown editor with live preview, built with plain HTML, CSS & 
 
 ### Code Block
 
-\`\`\`javascript
+\`\`\`js
 function greet(name) {
   return \`Hello, \${name}! ⚓\`;
 }
@@ -1095,31 +796,30 @@ console.log(greet('World'));
 
 ---
 
-## Table
+## Task List
 
-| Feature        | Status  | Notes                   |
-|----------------|---------|-------------------------|
-| Markdown render | ✅ Done | Uses marked.js          |
-| Syntax highlight| ✅ Done | Uses highlight.js       |
-| PDF export      | ✅ Done | Uses html2pdf.js        |
-| Dark mode       | ✅ Done | Persisted in storage    |
+- [x] Live preview working
+- [x] 6 beautiful themes
+- [x] PDF export button
+- [x] Auto-save to localStorage
+- [x] Sync scroll between panes
+- [ ] World domination 🏴‍☠️
 
 ---
 
-## Lists
+## Features
 
-1. Edit Markdown on the **left**
-2. See rendered preview on the **right**
-3. Use the **toolbar** for quick formatting
-4. Drag the **divider** to resize panes
+1. Edit on the **left** → preview on the **right**
+2. Use the **toolbar** for quick formatting
+3. Drag the **divider bar** to resize panes
+4. Toggle **sync scroll** in the editor header
+5. **Export PDF** or **download .md** from the top bar
 
 ---
 
 *Happy writing! 🏴‍☠️*
-`;
-    }
+`;}
 
-  })();
-  </script>
+</script>
 </body>
 </html>

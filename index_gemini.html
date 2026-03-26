@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Viewer | Straw Hat Edition</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root {
+            /* One Piece Inspired Palette */
+            --red: #e63946;
+            --gold: #f4a261;
+            --ocean: #1d3557;
+            --white: #f1faee;
+            --light-blue: #a8dadc;
+            
+            /* Theme Variables */
+            --bg-color: #ffffff;
+            --text-color: #2b2d42;
+            --header-bg: var(--ocean);
+            --border-color: #ddd;
+            --panel-bg: #fff;
+            --transition: 0.3s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --text-color: #f1faee;
+            --header-bg: #0d1b2a;
+            --border-color: #444;
+            --panel-bg: #2d2d2d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color var(--transition), color var(--transition);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: var(--header-bg);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .logo {
+            font-weight: bold;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+            color: var(--gold);
+        }
+
+        .logo span { color: var(--red); }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-theme { background: var(--gold); color: #000; }
+        .btn-export { background: var(--red); color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* --- Main Layout --- */
+        main {
+            display: flex;
+            flex: 1;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .editor-panel {
+            border-right: 1px solid var(--border-color);
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            resize: none;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: inherit;
+            font-family: 'Fira Code', monospace;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        #preview {
+            height: 100%;
+            overflow-y: auto;
+            padding: 10px;
+            line-height: 1.6;
+        }
+
+        /* --- Markdown Styling --- */
+        #preview h1, #preview h2, #preview h3 { margin-bottom: 1rem; color: var(--red); }
+        #preview code { background: rgba(0,0,0,0.1); padding: 2px 5px; border-radius: 4px; }
+        [data-theme="dark"] #preview code { background: rgba(255,255,255,0.1); }
+        #preview pre code { background: none; padding: 0; }
+        #preview table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        #preview th, #preview td { border: 1px solid var(--border-color); padding: 8px; }
+        #preview th { background-color: var(--light-blue); color: #1d3557; }
+        #preview img { max-width: 100%; border-radius: 8px; }
+
+        /* --- Responsiveness --- */
+        @media (max-width: 768px) {
+            main { flex-direction: column; }
+            .editor-panel { border-right: none; border-bottom: 1px solid var(--border-color); height: 50%; }
+            header { padding: 1rem; }
+            .logo { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body data-theme="light">
+
+    <header>
+        <div class="logo">⚓ Markdown <span>Viewer</span></div>
+        <div class="actions">
+            <button class="btn-theme" id="themeToggle">🌙 Mode</button>
+            <button class="btn-export" id="exportPdf">📄 Export PDF</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel editor-panel">
+            <textarea id="editor" placeholder="Write your Markdown here..."></textarea>
+        </section>
+        <section class="panel preview-panel">
+            <div id="preview"></div>
+        </section>
+    </main>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const themeToggle = document.getElementById('themeToggle');
+        const exportBtn = document.getElementById('exportPdf');
+
+        // Configure Marked.js with Highlight.js
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+
+        // --- Core Functions ---
+
+        function updatePreview() {
+            const content = editor.value;
+            preview.innerHTML = marked.parse(content);
+            localStorage.setItem('markdown-content', content);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', newTheme);
+            themeToggle.textContent = newTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+            localStorage.setItem('theme-pref', newTheme);
+        }
+
+        function exportToPdf() {
+            const opt = {
+                margin: 1,
+                filename: 'markdown-export.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            
+            // Add a temporary class for PDF styling if needed
+            html2pdf().set(opt).from(preview).save();
+        }
+
+        // --- Event Listeners ---
+
+        editor.addEventListener('input', updatePreview);
+        themeToggle.addEventListener('click', toggleTheme);
+        exportBtn.addEventListener('click', exportToPdf);
+
+        // --- Initialization ---
+
+        window.onload = () => {
+            // Load Content
+            const savedContent = localStorage.getItem('markdown-content');
+            if (savedContent) {
+                editor.value = savedContent;
+            } else {
+                editor.value = "# Welcome to the Grand Line ⚓\n\nTry writing some **Markdown**!\n\n- [ ] Find the One Piece\n- [x] Build an awesome viewer\n\n```javascript\nconsole.log('Hello, Pirate World!');\n```";
+            }
+            
+            // Load Theme
+            const savedTheme = localStorage.getItem('theme-pref');
+            if (savedTheme) {
+                document.body.setAttribute('data-theme', savedTheme);
+                themeToggle.textContent = savedTheme === 'light' ? '🌙 Mode' : '☀️ Mode';
+            }
+
+            updatePreview();
+        };
+    </script>
+</body>
+</html>
